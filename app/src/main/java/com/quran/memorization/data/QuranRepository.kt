@@ -26,17 +26,22 @@ class QuranRepository(private val context: Context) {
             val ayahList = mutableListOf<Ayah>()
 
             for (i in 0 until surahsArray.length()) {
+
                 val surahObject = surahsArray.getJSONObject(i)
 
                 val surahNumber = surahObject.getInt("number")
-                val surahName = surahObject.getString("name")
-                val englishName =
-                    if (surahObject.has("englishName"))
-                        surahObject.getString("englishName")
-                    else
-                        ""
 
-                val versesArray = surahObject.getJSONArray("ayahs")
+                val surahName = surahObject.getString("name")
+
+                val englishName =
+                    if (surahObject.has("englishName")) {
+                        surahObject.getString("englishName")
+                    } else {
+                        ""
+                    }
+
+                val versesArray =
+                    surahObject.getJSONArray("ayahs")
 
                 surahList.add(
                     Surah(
@@ -48,7 +53,9 @@ class QuranRepository(private val context: Context) {
                 )
 
                 for (j in 0 until versesArray.length()) {
-                    val ayahObject = versesArray.getJSONObject(j)
+
+                    val ayahObject =
+                        versesArray.getJSONObject(j)
 
                     ayahList.add(
                         Ayah(
@@ -70,6 +77,7 @@ class QuranRepository(private val context: Context) {
             ayahs = ayahList
 
         } catch (e: Exception) {
+
             surahs = emptyList()
             ayahs = emptyList()
         }
@@ -102,7 +110,10 @@ class QuranRepository(private val context: Context) {
     }
 
     fun search(query: String): List<Ayah> {
-        if (query.isBlank()) return emptyList()
+
+        if (query.isBlank()) {
+            return emptyList()
+        }
 
         val normalizedQuery = query.trim()
 
@@ -114,11 +125,4 @@ class QuranRepository(private val context: Context) {
         }
     }
 
-    fun getTotalSurahs(): Int {
-        return surahs.size
-    }
-
-    fun getTotalAyahs(): Int {
-        return ayahs.size
-    }
-}
+    fun getAy
