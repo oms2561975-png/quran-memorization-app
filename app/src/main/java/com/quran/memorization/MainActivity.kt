@@ -1,731 +1,294 @@
 package com.quran.memorization
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.quran.memorization.data.Ayah
+import com.quran.memorization.data.QuranRepository
+import com.quran.memorization.data.Surah
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            QuranApp()
+            QuranApp(this)
         }
     }
 }
 
-enum class AppScreen {
+private enum class Screen {
     HOME,
-    MEMORIZATION,
-    REVISION,
-    REPETITION,
-    TEST,
-    RECITATION,
-    PROGRESS,
-    ACCOUNT
+    SURAHS,
+    AYAHS,
+    SEARCH,
+    BOOKMARKS
 }
 
-data class Feature(
-    val title: String,
-    val subtitle: String,
-    val icon: ImageVector,
-    val screen: AppScreen
-)
-
 @Composable
-fun QuranApp() {
+fun QuranApp(context: Context) {
 
-    var darkMode by remember { mutableStateOf(false) }
-    var currentScreen by remember { mutableStateOf(AppScreen.HOME) }
+    var screen by remember {
+        mutableStateOf(Screen.HOME)
+    }
 
-    val lightColors = lightColorScheme(
-        primary = Color(0xFF287A5B),
-        secondary = Color(0xFF4F8A6E),
-        background = Color(0xFFF6F8F6),
-        surface = Color.White
-    )
+    var selectedSurah by remember {
+        mutableIntStateOf(1)
+    }
 
-    val darkColors = darkColorScheme(
-        primary = Color(0xFF65C995),
-        secondary = Color(0xFF8BC7A7),
-        background = Color(0xFF101512),
-        surface = Color(0xFF18201B)
-    )
+    val repository = remember {
+        QuranRepository(context)
+    }
 
-    MaterialTheme(
-        colorScheme = if (darkMode) darkColors else lightColors
-    ) {
+    MaterialTheme {
 
-        CompositionLocalProvider(
-            LocalLayoutDirection provides LayoutDirection.Rtl
+        Surface(
+            modifier = Modifier.fillMaxSize()
         ) {
 
-            AppNavigation(
-                currentScreen = currentScreen,
-                onScreenChange = { currentScreen = it },
-                darkMode = darkMode,
-                onDarkModeChange = { darkMode = it }
-            )
+            androidx.compose.runtime.CompositionLocalProvider(
+                LocalLayoutDirection provides LayoutDirection.Rtl
+            ) {
+
+                when (screen) {
+
+                    Screen.HOME -> HomeScreen(
+                        repository = repository,
+                        onQuranClick = {
+                            screen = Screen.SURAHS
+                        },
+                        onSearchClick = {
+                            screen = Screen.SEARCH
+                        },
+                        onBookmarksClick = {
+                            screen = Screen.BOOKMARKS
+                        }
+                    )
+
+                    Screen.SURAHS -> SurahsScreen(
+                        repository = repository,
+                        onBack = {
+                            screen = Screen.HOME
+                        },
+                        onSurahClick = { number ->
+                            selectedSurah = number
+                            screen = Screen.AYAHS
+                        }
+                    )
+
+                    Screen.AYAHS -> AyahsScreen(
+                        repository = repository,
+                        surahNumber = selectedSurah,
+                        context = context,
+                        onBack = {
+                            screen = Screen.SURAHS
+                        }
+                    )
+
+                    Screen.SEARCH -> SearchScreen(
+                        repository = repository,
+                        onBack = {
+                            screen = Screen.HOME
+                        },
+                        onAyahClick = { number ->
+                            selectedSurah = number
+                            screen = Screen.AYAHS
+                        }
+                    )
+
+                    Screen.BOOKMARKS -> BookmarksScreen(
+                        repository = repository,
+                        context = context,
+                        onBack = {
+                            screen = Screen.HOME
+                        },
+                        onAyahClick = { number ->
+                            selectedSurah = number
+                            screen = Screen.AYAHS
+                        }
+                    )
+                }
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppNavigation(
-    currentScreen: AppScreen,
-    onScreenChange: (AppScreen) -> Unit,
-    darkMode: Boolean,
-    onDarkModeChange: (Boolean) -> Unit
+private fun HomeScreen(
+    repository: QuranRepository,
+    onQuranClick: () -> Unit,
+    onSearchClick: () -> Unit,
+    onBookmarksClick: () -> Unit
 ) {
 
     Scaffold(
-        bottomBar = {
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
 
-            NavigationBar {
+                        Text(
+                            text = "رفيق القرآن",
+                            fontSize = 22.sp
+                        )
 
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.HOME,
-                    onClick = { onScreenChange(AppScreen.HOME) },
-                    icon = {
-                        Icon(Icons.Default.Home, null)
-                    },
-                    label = {
-                        Text("الرئيسية")
+                        Text(
+                            text = "تحفيظ • مراجعة • تسميع",
+                            fontSize = 12.sp
+                        )
                     }
-                )
-
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.MEMORIZATION,
-                    onClick = { onScreenChange(AppScreen.MEMORIZATION) },
-                    icon = {
-                        Icon(Icons.Default.MenuBook, null)
-                    },
-                    label = {
-                        Text("القرآن")
-                    }
-                )
-
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.PROGRESS,
-                    onClick = { onScreenChange(AppScreen.PROGRESS) },
-                    icon = {
-                        Icon(Icons.Default.BarChart, null)
-                    },
-                    label = {
-                        Text("التقدم")
-                    }
-                )
-
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.ACCOUNT,
-                    onClick = { onScreenChange(AppScreen.ACCOUNT) },
-                    icon = {
-                        Icon(Icons.Default.Person, null)
-                    },
-                    label = {
-                        Text("حسابي")
-                    }
-                )
-            }
+                }
+            )
         }
     ) { padding ->
 
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-        ) {
-
-            when (currentScreen) {
-
-                AppScreen.HOME -> {
-                    HomeScreen(
-                        onScreenChange = onScreenChange,
-                        darkMode = darkMode,
-                        onDarkModeChange = onDarkModeChange
-                    )
-                }
-
-                AppScreen.MEMORIZATION -> {
-                    MemorizationScreen(
-                        onBack = {
-                            onScreenChange(AppScreen.HOME)
-                        }
-                    )
-                }
-
-                AppScreen.REVISION -> {
-                    RevisionScreen(
-                        onBack = {
-                            onScreenChange(AppScreen.HOME)
-                        }
-                    )
-                }
-
-                AppScreen.REPETITION -> {
-                    RepetitionScreen(
-                        onBack = {
-                            onScreenChange(AppScreen.HOME)
-                        }
-                    )
-                }
-
-                AppScreen.TEST -> {
-                    TestScreen(
-                        onBack = {
-                            onScreenChange(AppScreen.HOME)
-                        }
-                    )
-                }
-
-                AppScreen.RECITATION -> {
-                    RecitationScreen(
-                        onBack = {
-                            onScreenChange(AppScreen.HOME)
-                        }
-                    )
-                }
-
-                AppScreen.PROGRESS -> {
-                    ProgressScreen()
-                }
-
-                AppScreen.ACCOUNT -> {
-                    AccountScreen(
-                        darkMode = darkMode,
-                        onDarkModeChange = onDarkModeChange
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun HomeScreen(
-    onScreenChange: (AppScreen) -> Unit,
-    darkMode: Boolean,
-    onDarkModeChange: (Boolean) -> Unit
-) {
-
-    val features = listOf(
-
-        Feature(
-            "الحفظ",
-            "حفظ جديد ومتابعة الآيات",
-            Icons.Default.MenuBook,
-            AppScreen.MEMORIZATION
-        ),
-
-        Feature(
-            "المراجعة",
-            "راجع محفوظك بذكاء",
-            Icons.Default.Refresh,
-            AppScreen.REVISION
-        ),
-
-        Feature(
-            "التكرار",
-            "كرر الآيات حتى الإتقان",
-            Icons.Default.Replay,
-            AppScreen.REPETITION
-        ),
-
-        Feature(
-            "اختبرني",
-            "اختبر مستوى حفظك",
-            Icons.Default.Quiz,
-            AppScreen.TEST
-        ),
-
-        Feature(
-            "التسميع",
-            "سجل تسميعك وتابعه",
-            Icons.Default.Mic,
-            AppScreen.RECITATION
-        ),
-
-        Feature(
-            "تقدمي",
-            "تابع إنجازك وإحصاءاتك",
-            Icons.Default.ShowChart,
-            AppScreen.PROGRESS
-        )
-    )
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 16.dp)
-    ) {
-
-        item {
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 18.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                Column {
-
-                    Text(
-                        text = "رفيق القرآن",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Text(
-                        text = "تحفيظ • مراجعة • تكرار • تسميع",
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                IconButton(
-                    onClick = {
-                        onDarkModeChange(!darkMode)
-                    }
-                ) {
-
-                    Icon(
-                        imageVector =
-                            if (darkMode)
-                                Icons.Default.LightMode
-                            else
-                                Icons.Default.DarkMode,
-                        contentDescription = "الوضع الليلي"
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-        }
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(20.dp)
-                ) {
-
-                    Text(
-                        text = "خطة اليوم",
-                        color = Color.White,
-                        fontSize = 16.sp
-                    )
-
-                    Spacer(modifier = Modifier.height(5.dp))
-
-                    Text(
-                        text = "سورة الملك",
-                        color = Color.White,
-                        fontSize = 25.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Text(
-                        text = "الآيات 1 – 5",
-                        color = Color.White.copy(alpha = 0.85f)
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    LinearProgressIndicator(
-                        progress = { 0.65f },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp),
-                        color = Color.White,
-                        trackColor = Color.White.copy(alpha = 0.25f)
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "65% من خطة اليوم",
-                        color = Color.White
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Button(
-                        onClick = {
-                            onScreenChange(AppScreen.MEMORIZATION)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-
-                        Icon(Icons.Default.PlayArrow, null)
-
-                        Spacer(modifier = Modifier.width(6.dp))
-
-                        Text("ابدأ جلسة الحفظ")
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-
-        item {
-
-            Text(
-                text = "أدواتك اليومية",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-        }
-
-        item {
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(390.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-
-                items(features) { feature ->
-
-                    FeatureCard(
-                        feature = feature,
-                        onClick = {
-                            onScreenChange(feature.screen)
-                        }
-                    )
-                }
-            }
-        }
-
-        item {
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(18.dp)
-                ) {
-
-                    Text(
-                        text = "هدفك اليوم",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "استمر بخطوة صغيرة كل يوم، فالثبات هو طريق الإتقان.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-    }
-}
-
-@Composable
-fun FeatureCard(
-    feature: Feature,
-    onClick: () -> Unit
-) {
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(178.dp)
-            .clickable {
-                onClick()
-            },
-        shape = RoundedCornerShape(20.dp)
-    ) {
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(15.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-
-            Icon(
-                imageVector = feature.icon,
-                contentDescription = feature.title,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(36.dp)
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                text = feature.title,
-                fontWeight = FontWeight.Bold,
-                fontSize = 17.sp
-            )
-
-            Spacer(modifier = Modifier.height(5.dp))
-
-            Text(
-                text = feature.subtitle,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-fun ScreenHeader(
-    title: String,
-    subtitle: String? = null,
-    onBack: () -> Unit
-) {
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        IconButton(
-            onClick = onBack
-        ) {
-            Icon(
-                Icons.Default.ArrowForward,
-                contentDescription = "رجوع"
-            )
-        }
-
-        Column {
-
-            Text(
-                text = title,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            if (subtitle != null) {
-
-                Text(
-                    text = subtitle,
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun MemorizationScreen(
-    onBack: () -> Unit
-) {
-
-    var selectedSurah by remember {
-        mutableStateOf("سورة الملك")
-    }
-
-    var repeatCount by remember {
-        mutableStateOf(3)
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-
-        ScreenHeader(
-            title = "الحفظ",
-            subtitle = "جلسة حفظ جديدة",
-            onBack = onBack
-        )
-
-        LazyColumn(
-            modifier = Modifier.padding(horizontal = 16.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
             item {
 
-                SectionCard(
-                    title = "السورة",
-                    text = selectedSurah
-                ) {
+                Text(
+                    text = "مرحبًا بك",
+                    fontSize = 26.sp,
+                    textAlign = TextAlign.Right,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
-                    selectedSurah =
-                        if (selectedSurah == "سورة الملك")
-                            "سورة البقرة"
-                        else
-                            "سورة الملك"
-                }
+            item {
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "ابدأ رحلتك مع القرآن الكريم",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+
+                FeatureCard(
+                    title = "القرآن الكريم",
+                    description = "114 سورة • جميع الآيات",
+                    icon = Icons.Default.MenuBook,
+                    onClick = onQuranClick
+                )
+            }
+
+            item {
+
+                FeatureCard(
+                    title = "البحث في القرآن",
+                    description = "ابحث عن آية أو كلمة",
+                    icon = Icons.Default.Search,
+                    onClick = onSearchClick
+                )
+            }
+
+            item {
+
+                FeatureCard(
+                    title = "العلامات المحفوظة",
+                    description = "الوصول السريع إلى الآيات المحفوظة",
+                    icon = Icons.Default.Bookmark,
+                    onClick = onBookmarksClick
+                )
             }
 
             item {
 
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
+                    colors = CardDefaults.cardColors(
+                        containerColor =
+                            MaterialTheme.colorScheme.surfaceVariant
+                    )
                 ) {
 
                     Column(
-                        modifier = Modifier.padding(18.dp)
+                        modifier = Modifier.padding(16.dp)
                     ) {
 
                         Text(
-                            text = "الآيات",
-                            fontWeight = FontWeight.Bold,
+                            text = "بيانات القرآن",
                             fontSize = 18.sp
                         )
 
-                        Spacer(modifier = Modifier.height(15.dp))
-
-                        Text(
-                            text = "﴿ تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ ﴾",
-                            fontSize = 21.sp,
-                            lineHeight = 36.sp
+                        Spacer(
+                            modifier = Modifier.height(8.dp)
                         )
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text =
+                                "السور: ${repository.getTotalSurahs()}",
+                            fontSize = 15.sp
+                        )
 
                         Text(
-                            text = "الآية 1",
-                            color = MaterialTheme.colorScheme.primary
+                            text =
+                                "الآيات: ${repository.getTotalAyahs()}",
+                            fontSize = 15.sp
+                        )
+
+                        Spacer(
+                            modifier = Modifier.height(8.dp)
+                        )
+
+                        Text(
+                            text = "المصدر: Tanzil Project",
+                            fontSize = 12.sp
                         )
                     }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-            }
-
-            item {
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-
-                    Column(
-                        modifier = Modifier.padding(18.dp)
-                    ) {
-
-                        Text(
-                            text = "عدد التكرارات",
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-
-                            IconButton(
-                                onClick = {
-                                    if (repeatCount > 1) repeatCount--
-                                }
-                            ) {
-                                Icon(Icons.Default.Remove, null)
-                            }
-
-                            Text(
-                                text = "$repeatCount مرات",
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            IconButton(
-                                onClick = {
-                                    if (repeatCount < 20) repeatCount++
-                                }
-                            ) {
-                                Icon(Icons.Default.Add, null)
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-            }
-
-            item {
-
-                Button(
-                    onClick = {},
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-
-                    Icon(Icons.Default.PlayArrow, null)
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text("بدء جلسة الحفظ")
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                OutlinedButton(
-                    onClick = {},
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-
-                    Icon(Icons.Default.VolumeUp, null)
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text("استماع للتلاوة")
                 }
             }
         }
@@ -733,9 +296,10 @@ fun MemorizationScreen(
 }
 
 @Composable
-fun SectionCard(
+private fun FeatureCard(
     title: String,
-    text: String,
+    description: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     onClick: () -> Unit
 ) {
 
@@ -744,452 +308,532 @@ fun SectionCard(
             .fillMaxWidth()
             .clickable {
                 onClick()
-            },
-        shape = RoundedCornerShape(20.dp)
+            }
     ) {
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(18.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            Column {
-
-                Text(
-                    text = title,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp
-                )
-
-                Spacer(modifier = Modifier.height(5.dp))
-
-                Text(
-                    text = text,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
-            }
-
-            Icon(
-                Icons.Default.KeyboardArrowDown,
-                contentDescription = null
-            )
-        }
-    }
-}
-
-@Composable
-fun RevisionScreen(
-    onBack: () -> Unit
-) {
-
-    SimpleFeatureScreen(
-        title = "المراجعة",
-        subtitle = "راجع محفوظك وحافظ على ثباته",
-        icon = Icons.Default.Refresh,
-        description = "ستتمكن هنا من تنظيم المراجعة اليومية حسب السورة ومستوى الإتقان.",
-        buttonText = "ابدأ المراجعة",
-        onBack = onBack
-    )
-}
-
-@Composable
-fun RepetitionScreen(
-    onBack: () -> Unit
-) {
-
-    SimpleFeatureScreen(
-        title = "التكرار",
-        subtitle = "كرر الآيات حتى الإتقان",
-        icon = Icons.Default.Replay,
-        description = "حدد عدد مرات تكرار الآية أو مجموعة الآيات ثم ابدأ جلسة التكرار.",
-        buttonText = "ابدأ التكرار",
-        onBack = onBack
-    )
-}
-
-@Composable
-fun TestScreen(
-    onBack: () -> Unit
-) {
-
-    SimpleFeatureScreen(
-        title = "اختبرني",
-        subtitle = "اختبر مستوى حفظك",
-        icon = Icons.Default.Quiz,
-        description = "اختبارات الحفظ ستساعدك على اكتشاف الآيات التي تحتاج إلى مراجعة.",
-        buttonText = "ابدأ الاختبار",
-        onBack = onBack
-    )
-}
-
-@Composable
-fun RecitationScreen(
-    onBack: () -> Unit
-) {
-
-    SimpleFeatureScreen(
-        title = "التسميع",
-        subtitle = "سجل تسميعك وتابع مستواك",
-        icon = Icons.Default.Mic,
-        description = "ستكون هذه الشاشة مخصصة لتسجيل التسميع ومراجعة التسجيلات وتقييم الأداء.",
-        buttonText = "ابدأ التسميع",
-        onBack = onBack
-    )
-}
-
-@Composable
-fun SimpleFeatureScreen(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    description: String,
-    buttonText: String,
-    onBack: () -> Unit
-) {
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-
-        ScreenHeader(
-            title = title,
-            subtitle = subtitle,
-            onBack = onBack
-        )
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(28.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(70.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Text(
-                        text = title,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(
-                        text = description,
-                        fontSize = 15.sp,
-                        lineHeight = 25.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(25.dp))
-
-                    Button(
-                        onClick = {},
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(icon, null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(buttonText)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ProgressScreen() {
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-    ) {
-
-        item {
-
-            Text(
-                text = "تقدمي",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Text(
-                text = "تابع رحلتك مع القرآن",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-
-        item {
-
-            ProgressCard(
-                title = "الحفظ",
-                value = "65%",
-                progress = 0.65f
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            ProgressCard(
-                title = "المراجعة",
-                value = "48%",
-                progress = 0.48f
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            ProgressCard(
-                title = "الإتقان",
-                value = "72%",
-                progress = 0.72f
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(20.dp)
-                ) {
-
-                    Text(
-                        text = "إنجازاتك",
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    Text("📖 جلسات الحفظ: 12")
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text("🔄 جلسات المراجعة: 8")
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text("🎙️ جلسات التسميع: 6")
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text("🔥 أيام متتالية: 7")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ProgressCard(
-    title: String,
-    value: String,
-    progress: Float
-) {
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp)
-    ) {
-
-        Column(
-            modifier = Modifier.padding(18.dp)
-        ) {
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Text(
-                    text = value,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun AccountScreen(
-    darkMode: Boolean,
-    onDarkModeChange: (Boolean) -> Unit
-) {
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-    ) {
-
-        item {
-
-            Text(
-                text = "حسابي",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Text(
-                text = "إعدادات رفيق القرآن",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(18.dp)
-                ) {
-
-                    Text(
-                        text = "المظهر",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        Text("الوضع الليلي")
-
-                        Switch(
-                            checked = darkMode,
-                            onCheckedChange = onDarkModeChange
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        item {
-
-            SettingsItem(
-                icon = Icons.Default.Backup,
-                title = "النسخ الاحتياطي",
-                subtitle = "حفظ بياناتك واستعادتها"
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            SettingsItem(
-                icon = Icons.Default.Description,
-                title = "التقارير",
-                subtitle = "تقارير الحفظ والتقدم"
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            SettingsItem(
-                icon = Icons.Default.Info,
-                title = "عن التطبيق",
-                subtitle = "رفيق القرآن — الإصدار 1.0"
-            )
-        }
-    }
-}
-
-@Composable
-fun SettingsItem(
-    icon: ImageVector,
-    title: String,
-    subtitle: String
-) {
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp)
-    ) {
-
-        Row(
-            modifier = Modifier.padding(18.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
 
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(30.dp)
+                modifier = Modifier.size(32.dp)
             )
 
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(
+                modifier = Modifier.width(16.dp)
+            )
 
-            Column {
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
 
                 Text(
                     text = title,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 19.sp
                 )
 
                 Text(
-                    text = subtitle,
+                    text = description,
                     fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color =
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SurahsScreen(
+    repository: QuranRepository,
+    onBack: () -> Unit,
+    onSurahClick: (Int) -> Unit
+) {
+
+    Scaffold(
+        topBar = {
+
+            TopAppBar(
+                title = {
+                    Text("سور القرآن الكريم")
+                },
+                navigationIcon = {
+
+                    IconButton(
+                        onClick = onBack
+                    ) {
+
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "رجوع"
+                        )
+                    }
+                }
+            )
+        }
+    ) { padding ->
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+
+            items(
+                repository.getSurahs()
+            ) { surah ->
+
+                SurahRow(
+                    surah = surah,
+                    onClick = {
+                        onSurahClick(surah.number)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SurahRow(
+    surah: Surah,
+    onClick: () -> Unit
+) {
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable {
+                onClick()
+            }
+            .padding(
+                horizontal = 18.dp,
+                vertical = 14.dp
+            ),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+
+        Text(
+            text = surah.number.toString(),
+            fontSize = 15.sp,
+            modifier = Modifier.width(35.dp),
+            textAlign = TextAlign.Center
+        )
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+
+            Text(
+                text = surah.name,
+                fontSize = 20.sp
+            )
+
+            Text(
+                text = "${surah.versesCount} آية",
+                fontSize = 12.sp,
+                color =
+                    MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AyahsScreen(
+    repository: QuranRepository,
+    surahNumber: Int,
+    context: Context,
+    onBack: () -> Unit
+) {
+
+    val surah = repository.getSurah(surahNumber)
+
+    val ayahs = repository
+        .getAyahs(surahNumber)
+        .filter {
+            it.ayahNumber > 0
+        }
+
+    Scaffold(
+        topBar = {
+
+            TopAppBar(
+                title = {
+                    Text(
+                        surah?.name ?: "السورة"
+                    )
+                },
+                navigationIcon = {
+
+                    IconButton(
+                        onClick = onBack
+                    ) {
+
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "رجوع"
+                        )
+                    }
+                }
+            )
+        }
+    ) { padding ->
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(12.dp),
+            verticalArrangement =
+                Arrangement.spacedBy(10.dp)
+        ) {
+
+            item {
+
+                Text(
+                    text = surah?.name ?: "",
+                    fontSize = 28.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(
+                    modifier = Modifier.height(12.dp)
+                )
+            }
+
+            items(
+                items = ayahs,
+                key = {
+                    "${surahNumber}:${it.ayahNumber}"
+                }
+            ) { ayah ->
+
+                AyahCard(
+                    ayah = ayah,
+                    context = context
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AyahCard(
+    ayah: Ayah,
+    context: Context
+) {
+
+    val preferences = remember {
+
+        context.getSharedPreferences(
+            "quran_preferences",
+            Context.MODE_PRIVATE
+        )
+    }
+
+    val key =
+        "${ayah.surahNumber}:${ayah.ayahNumber}"
+
+    var bookmarked by remember {
+
+        mutableStateOf(
+            preferences.getBoolean(
+                "bookmark_$key",
+                false
+            )
+        )
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment =
+                    Alignment.CenterVertically
+            ) {
+
+                Text(
+                    text = ayah.ayahNumber.toString(),
+                    fontSize = 14.sp,
+                    modifier = Modifier.weight(1f)
+                )
+
+                IconButton(
+                    onClick = {
+
+                        bookmarked = !bookmarked
+
+                        preferences.edit()
+                            .putBoolean(
+                                "bookmark_$key",
+                                bookmarked
+                            )
+                            .apply()
+                    }
+                ) {
+
+                    Icon(
+                        imageVector =
+                            if (bookmarked)
+                                Icons.Default.Bookmark
+                            else
+                                Icons.Default.BookmarkBorder,
+                        contentDescription = "علامة"
+                    )
+                }
+            }
+
+            Text(
+                text = ayah.text,
+                fontSize = 25.sp,
+                lineHeight = 46.sp,
+                textAlign = TextAlign.Right,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchScreen(
+    repository: QuranRepository,
+    onBack: () -> Unit,
+    onAyahClick: (Int) -> Unit
+) {
+
+    var query by remember {
+        mutableStateOf("")
+    }
+
+    val results = remember(query) {
+
+        if (query.length >= 2) {
+
+            repository
+                .search(query)
+                .filter {
+                    it.ayahNumber > 0
+                }
+                .take(100)
+
+        } else {
+
+            emptyList()
+        }
+    }
+
+    Scaffold(
+        topBar = {
+
+            TopAppBar(
+                title = {
+                    Text("البحث في القرآن")
+                },
+                navigationIcon = {
+
+                    IconButton(
+                        onClick = onBack
+                    ) {
+
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "رجوع"
+                        )
+                    }
+                }
+            )
+        }
+    ) { padding ->
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp)
+        ) {
+
+            OutlinedTextField(
+                value = query,
+                onValueChange = {
+                    query = it
+                },
+                modifier = Modifier.fillMaxWidth(),
+                label = {
+                    Text("اكتب كلمة أو جزءًا من آية")
+                },
+                singleLine = true
+            )
+
+            Spacer(
+                modifier = Modifier.height(12.dp)
+            )
+
+            LazyColumn(
+                verticalArrangement =
+                    Arrangement.spacedBy(8.dp)
+            ) {
+
+                items(results) { ayah ->
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onAyahClick(
+                                    ayah.surahNumber
+                                )
+                            }
+                    ) {
+
+                        Column(
+                            modifier = Modifier.padding(14.dp)
+                        ) {
+
+                            Text(
+                                text =
+                                    "سورة ${
+                                        repository
+                                            .getSurah(
+                                                ayah.surahNumber
+                                            )
+                                            ?.name
+                                            ?: ""
+                                    } — آية ${ayah.ayahNumber}",
+                                fontSize = 14.sp
+                            )
+
+                            Spacer(
+                                modifier = Modifier.height(6.dp)
+                            )
+
+                            Text(
+                                text = ayah.text,
+                                fontSize = 19.sp,
+                                lineHeight = 32.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BookmarksScreen(
+    repository: QuranRepository,
+    context: Context,
+    onBack: () -> Unit,
+    onAyahClick: (Int) -> Unit
+) {
+
+    val preferences = remember {
+
+        context.getSharedPreferences(
+            "quran_preferences",
+            Context.MODE_PRIVATE
+        )
+    }
+
+    val allAyahs = repository
+        .getAyahsForAllSurahs()
+        .filter { ayah ->
+
+            ayah.ayahNumber > 0 &&
+                preferences.getBoolean(
+                    "bookmark_${ayah.surahNumber}:${ayah.ayahNumber}",
+                    false
+                )
+        }
+
+    Scaffold(
+        topBar = {
+
+            TopAppBar(
+                title = {
+                    Text("العلامات المحفوظة")
+                },
+                navigationIcon = {
+
+                    IconButton(
+                        onClick = onBack
+                    ) {
+
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "رجوع"
+                        )
+                    }
+                }
+            )
+        }
+    ) { padding ->
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(12.dp),
+            verticalArrangement =
+                Arrangement.spacedBy(8.dp)
+        ) {
+
+            items(allAyahs) { ayah ->
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            onAyahClick(
+                                ayah.surahNumber
+                            )
+                        }
+                ) {
+
+                    Column(
+                        modifier = Modifier.padding(14.dp)
+                    ) {
+
+                        Text(
+                            text =
+                                "سورة ${
+                                    repository
+                                        .getSurah(
+                                            ayah.surahNumber
+                                        )
+                                        ?.name
+                                        ?: ""
+                                } — آية ${ayah.ayahNumber}"
+                        )
+
+                        Spacer(
+                            modifier = Modifier.height(5.dp)
+                        )
+
+                        Text(
+                            text = ayah.text,
+                            fontSize = 19.sp,
+                            lineHeight = 32.sp
+                        )
+                    }
+                }
             }
         }
     }
