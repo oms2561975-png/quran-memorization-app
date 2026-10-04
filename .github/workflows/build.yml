@@ -22,6 +22,15 @@ jobs:
           echo "ANDROID_HOME=$ANDROID_HOME"
           ls "$ANDROID_HOME"
 
+      - name: Download Quran data
+        run: |
+          mkdir -p app/src/main/assets
+          curl -L \
+            "https://raw.githubusercontent.com/dotquran/corpus/main/processed/uthmani/quran-uthmani.json" \
+            -o app/src/main/assets/quran.json
+          echo "Quran data downloaded:"
+          ls -lh app/src/main/assets/quran.json
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
