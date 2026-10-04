@@ -30,7 +30,6 @@ class QuranRepository(private val context: Context) {
                 val surahObject = surahsArray.getJSONObject(i)
 
                 val surahNumber = surahObject.getInt("number")
-
                 val surahName = surahObject.getString("name")
 
                 val englishName =
@@ -77,7 +76,6 @@ class QuranRepository(private val context: Context) {
             ayahs = ayahList
 
         } catch (e: Exception) {
-
             surahs = emptyList()
             ayahs = emptyList()
         }
@@ -125,4 +123,15 @@ class QuranRepository(private val context: Context) {
         }
     }
 
-    fun getAy
+    fun getAyahsForAllSurahs(): List<Ayah> {
+        return ayahs
+    }
+
+    fun getTotalSurahs(): Int {
+        return surahs.size
+    }
+
+    fun getTotalAyahs(): Int {
+        return ayahs.size
+    }
+}
